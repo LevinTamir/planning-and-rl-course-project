@@ -9,7 +9,7 @@ The project explores sim-to-real transfer of DRL policies for indoor navigation 
 ## Methodology
 
 1. **Simulation Training**  
-   Training is performed in Gazebo Classic with ROS2 using DQN algorithm. The robot learns through trial-and-error interactions with the environment.
+   Training is performed in Gazebo Classic with ROS2 using DRL algorithms (e.g., DQN or PPO). The robot learns through trial-and-error interactions with the environment.
 
 2. **Custom Environment Interface**  
    A Gym-like interface is created to expose sensor data (LiDAR, odometry) and accept discrete velocity commands. The reward function encourages goal-directed, collision-free, and smooth behavior.
@@ -19,16 +19,38 @@ The project explores sim-to-real transfer of DRL policies for indoor navigation 
 
 ## Setup Instructions
 
-The following section provides steps to clone and run the project:
+### Clone the repository
 
 ```bash
-# Clone the repository
-git clone <repo-url>
-cd <repo-directory>
-
-# Build or install dependencies (to be completed)
-
-# Run the training or deployment scripts (to be completed)
+git clone git@github.com:LevinTamir/planning-and-rl-course-project.git
+cd planning-and-rl-course-project
 ```
 
-More detailed instructions will be added as the implementation progresses.
+### Add the following lines to your `.bashrc`
+
+```bash
+# Sourcing ROS2 & local workspace
+source /opt/ros/humble/setup.bash
+source <path to your ws>/install/setup.bash
+
+# TurtleBot3 environment setup
+export TURTLEBOT3_MODEL=waffle_pi
+# export TURTLEBOT3_MODEL=burger
+
+# ROS domain configuration
+export ROS_DOMAIN_ID=30  # TURTLEBOT3
+
+# Source Gazebo Classic environment
+source /usr/share/gazebo/setup.bash
+
+# Add Gazebo plugin path
+export GAZEBO_PLUGIN_PATH=$HOME/ros2_workspaces/turtlebot3_drl_ws/build/turtlebot3_gazebo:$GAZEBO_PLUGIN_PATH
+```
+
+Apply the changes by running:
+
+```bash
+source ~/.bashrc
+```
+
+> More detailed instructions for training and running inference will be added as the implementation progresses.
