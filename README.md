@@ -9,7 +9,7 @@ The project explores sim-to-real transfer of DRL policies for indoor navigation 
 ## Methodology
 
 1. **Simulation Training**  
-   Training is performed in Gazebo Classic with ROS2 using DRL algorithms (e.g., DQN or PPO). The robot learns through trial-and-error interactions with the environment.
+   Training is performed in Gazebo Classic with ROS2 using DQN algorithm. The robot learns through trial-and-error interactions with the environment.
 
 2. **Custom Environment Interface**  
    A Gym-like interface is created to expose sensor data (LiDAR, odometry) and accept discrete velocity commands. The reward function encourages goal-directed, collision-free, and smooth behavior.
