@@ -79,7 +79,7 @@ class DQNAgent(Node):
 
         self.load_model = False
         self.load_episode = 0
-        self.model_dir_path = "/home/tamir/ros2_workspaces/turtlebot3_drl_ws/src/turtlebot3_machine_learning/turtlebot3_dqn/saved_model"
+        self.model_dir_path = os.path.join(os.path.dirname(__file__), "..", "saved_model")
         self.model_path = os.path.join(
             self.model_dir_path, f"stage{self.stage}_episode{self.load_episode}.h5"
         )
