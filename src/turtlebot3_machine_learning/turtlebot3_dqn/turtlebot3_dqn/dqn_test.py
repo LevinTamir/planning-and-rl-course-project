@@ -34,8 +34,8 @@ class DQNTest(Node):
         self.epsilon = 1.0
         self.epsilon_decay = 0.99
         self.epsilon_min = 0.05
-        self.batch_size = 64
-        self.train_start = 64
+        self.batch_size = 64 # Not needed
+        self.train_start = 64 # Not needed
 
         self.memory = collections.deque(maxlen=1000000)
 
@@ -160,13 +160,10 @@ class DQNTest(Node):
         return model
 
     def get_action(self, state):
-        if numpy.random.rand() <= self.epsilon:
-            return random.randrange(self.action_size)
-        else:
-            state = numpy.asarray(state)
-            q_value = self.model.predict(state.reshape(1, len(state)))
-            print(numpy.argmax(q_value[0]))
-            return numpy.argmax(q_value[0])
+        state = numpy.asarray(state)
+        q_value = self.model.predict(state.reshape(1, len(state)))
+        print(numpy.argmax(q_value[0]))
+        return numpy.argmax(q_value[0])
 
     def train_model(self, target_train_start=False):
         mini_batch = random.sample(self.memory, self.batch_size)

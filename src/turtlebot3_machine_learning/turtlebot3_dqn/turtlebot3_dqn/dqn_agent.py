@@ -11,7 +11,7 @@ import time
 from keras.api.layers import Dense
 from keras.api.models import load_model
 from keras.api.models import Sequential
-from keras.api.optimizers import Adam
+from keras.api.optimizers import Adam, SGD
 import numpy
 import rclpy
 from rclpy.node import Node
@@ -30,7 +30,7 @@ class DQNMetric(tensorflow.keras.metrics.Metric):
 
     def __init__(self, name="dqn_metric"):
         super(DQNMetric, self).__init__(name=name)
-        self.loss = self.add_weight(name="loss", initializer="zeros")
+        self.loss = self.add_weight(name="loss", initializer="zeros") # Called loss but its the reward.
         self.episode_step = self.add_weight(name="step", initializer="zeros")
 
     def update_state(self, y_true, y_pred=0, sample_weight=None):
@@ -48,18 +48,19 @@ class DQNMetric(tensorflow.keras.metrics.Metric):
 class DQNAgent(Node):
 
     def __init__(self, stage_num, max_training_episodes):
-        super().__init__("dqn_agent")
+        super().__init__("dqn_agent") # Creating a node with the name "dqn_agent"
 
-        self.stage = int(stage_num)
+        self.stage = int(stage_num) # From the user input
         self.train_mode = True
-        self.state_size = 26
+        self.state_size = 26 # Can be changed. up to 362. 360 for the lidar data, 1 for the goal distance and 1 for the goal angle.
         self.action_size = 5
-        self.max_training_episodes = int(max_training_episodes)
+        self.max_training_episodes = int(max_training_episodes) # From the user input
 
         self.done = False
         self.succeed = False
         self.fail = False
 
+        # Hyperparameters
         self.discount_factor = 0.99
         self.learning_rate = 0.0007
         self.epsilon = 1.0
@@ -70,13 +71,15 @@ class DQNAgent(Node):
 
         self.replay_memory = collections.deque(maxlen=500000)
         self.min_replay_memory_size = 5000
-
+        
+        # Creating the main and target Q-networks
         self.model = self.create_qnetwork()
         self.target_model = self.create_qnetwork()
         self.update_target_model()
-        self.update_target_after = 5000
+        self.update_target_after = 5000 # Like C
         self.target_update_after_counter = 0
 
+        # Saving the model
         self.load_model = False
         self.load_episode = 0
         self.model_dir_path = os.path.join(os.path.dirname(__file__), "..", "saved_model")
@@ -104,7 +107,8 @@ class DQNAgent(Node):
             tensorboard_file_name = (
                 current_time + " dqn_stage" + str(self.stage) + "_reward"
             )
-            dqn_reward_log_dir = "logs/gradient_tape/" + tensorboard_file_name
+            base_dir = "/Users/amitgedj/planning-and-rl-course-project/src/turtlebot3_machine_learning/turtlebot3_dqn"
+            dqn_reward_log_dir = base_dir + "/logs/gradient_tape/" + tensorboard_file_name
             self.dqn_reward_writer = tensorflow.summary.create_file_writer(
                 dqn_reward_log_dir
             )
@@ -123,7 +127,7 @@ class DQNAgent(Node):
         self.env_make()
         time.sleep(1.0)
 
-        episode_num = self.load_episode
+        episode_num = self.load_episode 
 
         for episode in range(self.load_episode + 1, self.max_training_episodes + 1):
             state = self.reset_environment()
@@ -142,14 +146,14 @@ class DQNAgent(Node):
 
                 action = int(self.get_action(state))
                 next_state, reward, done = self.step(action)
-                score += reward
+                score += reward # Accumulating the score for the current episode.
 
                 msg = Float32MultiArray()
                 msg.data = [float(action), float(score), float(reward)]
                 self.action_pub.publish(msg)
 
                 if self.train_mode:
-                    self.append_sample((state, action, reward, next_state, done))
+                    self.append_sample((state, action, reward, next_state, done)) # Appending the transition to the replay memory.
                     self.train_model(done)
 
                 state = next_state
@@ -161,7 +165,7 @@ class DQNAgent(Node):
                     msg.data = [float(score), float(avg_max_q)]
                     self.result_pub.publish(msg)
 
-                    if LOGGING:
+                    if LOGGING: # For logging the reward to TensorBoard.
                         self.dqn_reward_metric.update_state(score)
                         with self.dqn_reward_writer.as_default():
                             tensorflow.summary.scalar(
@@ -189,8 +193,9 @@ class DQNAgent(Node):
 
                 time.sleep(0.01)
 
+            # Saving the model and parameters after every 100 episodes.
             if self.train_mode:
-                if episode % 10 == 0:
+                if episode % 100 == 0:
                     self.model_path = os.path.join(
                         self.model_dir_path,
                         "stage" + str(self.stage) + "_episode" + str(episode) + ".h5",
@@ -209,6 +214,7 @@ class DQNAgent(Node):
                     ) as outfile:
                         json.dump(param_dictionary, outfile)
 
+    # Once in the beginning
     def env_make(self):
         while not self.make_environment_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().warn(
@@ -217,6 +223,7 @@ class DQNAgent(Node):
 
         self.make_environment_client.call_async(Empty.Request())
 
+    # Resetting the environment at the beginning of each episode
     def reset_environment(self):
         while not self.reset_environment_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().warn(
@@ -261,7 +268,7 @@ class DQNAgent(Node):
                 "rl_agent interface service not available, waiting again..."
             )
 
-        future = self.rl_agent_interface_client.call_async(req)
+        future = self.rl_agent_interface_client.call_async(req) # This line sends the action to the environment and gets the next state, reward, and done flag.
 
         rclpy.spin_until_future_complete(self, future)
 
@@ -294,13 +301,15 @@ class DQNAgent(Node):
         print("*Target model updated*")
 
     def append_sample(self, transition):
+        # Add Sample to the replay memory
         self.replay_memory.append(transition)
 
     def train_model(self, terminal):
         if len(self.replay_memory) < self.min_replay_memory_size:
             return
+        # Sample a mini-batch from the replay memory
         data_in_mini_batch = random.sample(self.replay_memory, self.batch_size)
-
+        # (state, action, reward, next_state, done)
         current_states = numpy.array(
             [transition[0] for transition in data_in_mini_batch]
         )
@@ -334,6 +343,7 @@ class DQNAgent(Node):
         x_train = numpy.reshape(x_train, [len(data_in_mini_batch), self.state_size])
         y_train = numpy.reshape(y_train, [len(data_in_mini_batch), self.action_size])
 
+        # Train the model
         self.model.fit(
             tensorflow.convert_to_tensor(x_train, tensorflow.float32),
             tensorflow.convert_to_tensor(y_train, tensorflow.float32),
@@ -342,7 +352,7 @@ class DQNAgent(Node):
         )
         self.target_update_after_counter += 1
 
-        if self.target_update_after_counter > self.update_target_after and terminal:
+        if self.target_update_after_counter > self.update_target_after and terminal: # The update will occur only after the amount of steps is greater than the update_target_after value and the episode is done.
             self.update_target_model()
 
 

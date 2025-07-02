@@ -21,20 +21,21 @@ class RLEnvironment(Node):
 
     def __init__(self):
         super().__init__("rl_environment")
-        self.train_mode = True
+        self.train_mode = True # Train or test
         self.goal_pose_x = 0.0
         self.goal_pose_y = 0.0
         self.robot_pose_x = 0.0
         self.robot_pose_y = 0.0
 
-        self.action_size = 5
-        self.max_step = 800
+        self.action_size = 5 # Limiting the ammount of actions to 5 in order to simplify the learning. For angular velocity
+        self.max_step = 800 # The maximum steps in one episode. after that -> restart.
 
         self.done = False
         self.fail = False
         self.succeed = False
 
-        self.goal_angle = 0.0
+        # Initializing variables for goal distance and angle
+        self.goal_angle = 0.0 
         self.goal_distance = 1.0
         self.init_goal_distance = 0.5
         self.scan_ranges = []
@@ -42,10 +43,14 @@ class RLEnvironment(Node):
 
         self.local_step = 0
         self.stop_cmd_vel_timer = None
+
+        # Action space
         self.angular_vel = [1.5, 0.75, 0.0, -0.75, -1.5]
 
+        # How many messages back to keep in the queue.
         qos = QoSProfile(depth=10)
 
+        # Publisher and Subscriber
         self.cmd_vel_pub = self.create_publisher(Twist, "cmd_vel", qos)
 
         self.odom_sub = self.create_subscription(
@@ -55,6 +60,7 @@ class RLEnvironment(Node):
             LaserScan, "scan", self.scan_sub_callback, qos_profile_sensor_data
         )
 
+        # Services for success, failure and environment initialization
         self.clients_callback_group = MutuallyExclusiveCallbackGroup()
         self.task_succeed_client = self.create_client(
             Goal, "task_succeed", callback_group=self.clients_callback_group
@@ -76,17 +82,19 @@ class RLEnvironment(Node):
             Dqn, "reset_environment", self.reset_environment_callback
         )
 
+    # Callback for initializing the environment
     def make_environment_callback(self, request, response):
         while not self.initialize_environment_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().warn(
                 "service for initialize the environment is not available, waiting ..."
             )
-        future = self.initialize_environment_client.call_async(Goal.Request())
+        future = self.initialize_environment_client.call_async(Goal.Request()) # Waiting until a new goal is set
         rclpy.spin_until_future_complete(self, future)
         response_goal = future.result()
         if not response_goal.success:
             self.get_logger().error("initialize environment request failed")
         else:
+            # Updating the goal pose
             self.goal_pose_x = response_goal.pose_x
             self.goal_pose_y = response_goal.pose_y
             self.get_logger().info(
@@ -96,13 +104,14 @@ class RLEnvironment(Node):
         return response
 
     def reset_environment_callback(self, request, response):
-        state = self.calculate_state()
+        state = self.calculate_state() # appending current state and updates success or fail
         self.init_goal_distance = state[0]
         self.prev_goal_distance = self.init_goal_distance
         response.state = state
 
         return response
 
+    # Callback when the task is succeeded. Creating new goal but the robot stays at the same position.
     def call_task_succeed(self):
         while not self.task_succeed_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().warn(
@@ -117,7 +126,8 @@ class RLEnvironment(Node):
             self.get_logger().info("service for task succeed finished")
         else:
             self.get_logger().error("task succeed service call failed")
-
+            
+    # Callback when the task is failed. Creating new goal and reseting the pose of the robot.
     def call_task_failed(self):
         while not self.task_failed_client.wait_for_service(timeout_sec=1.0):
             self.get_logger().warn(
@@ -133,6 +143,7 @@ class RLEnvironment(Node):
         else:
             self.get_logger().error("task failed service call failed")
 
+    # Callback for the laser data
     def scan_sub_callback(self, scan):
         self.scan_ranges = []
         num_of_lidar_rays = len(scan.ranges)
@@ -145,8 +156,9 @@ class RLEnvironment(Node):
             else:
                 self.scan_ranges.append(scan.ranges[i])
 
-        self.min_obstacle_distance = min(self.scan_ranges)
+        self.min_obstacle_distance = min(self.scan_ranges) # minimum distance to an obstacle
 
+    # Callback for the odometry data - Position
     def odom_sub_callback(self, msg):
         self.robot_pose_x = msg.pose.pose.position.x
         self.robot_pose_y = msg.pose.pose.position.y
@@ -154,6 +166,7 @@ class RLEnvironment(Node):
             msg.pose.pose.orientation
         )
 
+        # Calculate the state- goal distance and angle
         goal_distance = math.sqrt(
             (self.goal_pose_x - self.robot_pose_x) ** 2
             + (self.goal_pose_y - self.robot_pose_y) ** 2
@@ -181,7 +194,7 @@ class RLEnvironment(Node):
             state.append(float(var))
         self.local_step += 1
 
-        if self.goal_distance < 0.20:
+        if self.goal_distance < 0.20: # Threshold for goal distance. Higher might be better.
             self.get_logger().info("Goal Reached")
             self.succeed = True
             self.done = True
@@ -206,9 +219,26 @@ class RLEnvironment(Node):
             self.call_task_failed()
 
         return state
-
+    '''
+    Calculate the reward based on the current state
+    The reward is calculated based on the distance to the goal, the angle to the goal
+    and the distance to the nearest obstacle.
+    The reward is higher when the robot is closer to the goal and the angle is smaller
+    and the distance to the nearest obstacle is larger.
+    The reward is lower when the robot is farther from the goal and the angle is larger
+    and the distance to the nearest obstacle is smaller.
+    In training mode, the reward is calculated based on the distance to the goal,
+    the angle to the goal and the distance to the nearest obstacle.
+    In test mode, the reward is calculated based on the success or failure of the task
+    and the robot is not moving.
+    If the task is succeeded, the reward is 5.0, if the task is failed, the reward is -5.0.
+    If the task is not succeeded or failed, the reward is 0.0.
+    In training mode, the reward is calculated based on the distance to the goal,
+    the angle to the goal and the distance to the nearest obstacle.
+    If the distance to the goal is smaller than the previous distance, the reward is positive
+    '''
     def calculate_reward(self):
-        if self.train_mode:
+        if self.train_mode: # In case we are in training mode.
 
             if not hasattr(self, "prev_goal_distance"):
                 self.prev_goal_distance = self.init_goal_distance
@@ -240,20 +270,20 @@ class RLEnvironment(Node):
         return reward
 
     def rl_agent_interface_callback(self, request, response):
-        action = request.action
-        twist = Twist()
+        action = request.action # Obtaining the action from the agent.
+        twist = Twist() # Creating a msg in the format of Twist, this is the format for sending the command to the robot
         twist.linear.x = 0.15
         twist.angular.z = self.angular_vel[action]
-        self.cmd_vel_pub.publish(twist)
-        if self.stop_cmd_vel_timer is None:
+        self.cmd_vel_pub.publish(twist) # Applying the action to the robot
+        if self.stop_cmd_vel_timer is None: # A new action is deployed every 1.8 seconds.
             self.prev_goal_distance = self.init_goal_distance
             self.stop_cmd_vel_timer = self.create_timer(1.8, self.timer_callback)
         else:
             self.destroy_timer(self.stop_cmd_vel_timer)
             self.stop_cmd_vel_timer = self.create_timer(1.8, self.timer_callback)
 
-        response.state = self.calculate_state()
-        response.reward = self.calculate_reward()
+        response.state = self.calculate_state() # Appending the current state
+        response.reward = self.calculate_reward() # Calculating the reward based on the current state
         response.done = self.done
 
         if self.done is True:
