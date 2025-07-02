@@ -4,3 +4,6 @@ log/
 **/__pycache__/
 *.pyc
 .vscode/
+.DS_Store
+logs/.DS_Store
+logs/gradient_tape/.DS_Store

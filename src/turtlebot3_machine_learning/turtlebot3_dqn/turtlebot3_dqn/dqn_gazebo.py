@@ -26,11 +26,12 @@ class GazeboInterface(Node):
 
         self.entity_name = "Goal"
         self.entity = None
-        self.open_entity()
+        self.open_entity() # Creating goal entity
 
         self.entity_pose_x = 0.5
         self.entity_pose_y = 0.0
 
+        # Create clients for Gazebo services
         self.delete_entity_client = self.create_client(DeleteEntity, "delete_entity")
         self.spawn_entity_client = self.create_client(SpawnEntity, "spawn_entity")
         self.reset_simulation_client = self.create_client(Empty, "reset_simulation")
@@ -41,21 +42,22 @@ class GazeboInterface(Node):
             "initialize_env",
             self.initialize_env_callback,
             callback_group=self.callback_group,
-        )
+        ) # Service to initialize the environment
         self.task_succeed_service = self.create_service(
             Goal,
             "task_succeed",
             self.task_succeed_callback,
             callback_group=self.callback_group,
-        )
+        ) # Service to handle task success
         self.task_failed_service = self.create_service(
             Goal,
             "task_failed",
             self.task_failed_callback,
             callback_group=self.callback_group,
-        )
+        ) # Service to handle task failure
 
     def open_entity(self):
+        """ Load the goal entity from the SDF file. """
         try:
             package_share = get_package_share_directory("turtlebot3_gazebo")
             model_path = os.path.join(
@@ -79,6 +81,7 @@ class GazeboInterface(Node):
         self.reset_simulation_client.call_async(reset_req)
 
     def delete_entity(self):
+        """ Delete the goal entity from the simulation. """
         delete_req = DeleteEntity.Request()
         delete_req.name = self.entity_name
 
@@ -92,6 +95,7 @@ class GazeboInterface(Node):
         self.get_logger().info("A goal deleted.")
 
     def spawn_entity(self):
+        """ Spawn the goal entity in the simulation. """
         entity_pose = Pose()
         entity_pose.position.x = self.entity_pose_x
         entity_pose.position.y = self.entity_pose_y
