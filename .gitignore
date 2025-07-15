@@ -7,3 +7,9 @@ log/
 .DS_Store
 logs/.DS_Store
 logs/gradient_tape/.DS_Store
+src/turtlebot3_machine_learning/turtlebot3_dqn/.DS_Store
+src/.DS_Store
+.DS_Store
+src/.DS_Store
+src/turtlebot3_machine_learning/.DS_Store
+src/turtlebot3_machine_learning/turtlebot3_dqn/.DS_Store

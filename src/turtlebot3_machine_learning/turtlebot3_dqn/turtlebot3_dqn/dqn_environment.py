@@ -252,7 +252,7 @@ class RLEnvironment(Node):
             if self.min_obstacle_distance < 0.50:
                 obstacle_reward = -1.0
 
-            reward = (distance_reward * 10) + (yaw_reward / 5) + obstacle_reward
+            reward = (distance_reward * 10) + (yaw_reward) + obstacle_reward
 
             if self.succeed:
                 reward = 30.0
