@@ -14,6 +14,12 @@ The project explores DRL policies for indoor navigation tasks. A robot is traine
 git clone git@github.com:LevinTamir/planning-and-rl-course-project.git
 cd planning-and-rl-course-project
 ```
+Build the workspace by running:
+
+```bash
+cd ~/<path to your ws>
+colcon build
+````
 
 ### Add the following lines to your `.bashrc`
 
@@ -41,7 +47,6 @@ Apply the changes by running:
 ```bash
 source ~/.bashrc
 ```
-
 ## Running the DRL Training and Testing
 
 ### Terminal #1: Launch Gazebo Stage Environment
@@ -101,10 +106,3 @@ To visualize the TurtleBot's actions and rewards in real-time:
 ```bash
 $ ros2 run turtlebot3_dqn action_graph
 ```
-
-This opens the Action State window showing:
-- Current TurtleBot actions (Left, Front, Right)
-- Reward values for each action
-- Total accumulated reward in the episode
-
-The graph displays real-time feedback on the robot's decision-making process during training or testing.
