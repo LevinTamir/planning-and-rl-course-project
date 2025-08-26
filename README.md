@@ -47,6 +47,7 @@ Apply the changes by running:
 ```bash
 source ~/.bashrc
 ```
+
 ## Running the DRL Training and Testing
 
 ### Terminal #1: Launch Gazebo Stage Environment
@@ -106,3 +107,7 @@ To visualize the TurtleBot's actions and rewards in real-time:
 ```bash
 $ ros2 run turtlebot3_dqn action_graph
 ```
+
+## References
+
+- [TurtleBot3 Manual](https://www.turtlebot.com/turtlebot3/)
